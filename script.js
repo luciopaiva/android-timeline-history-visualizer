@@ -5,6 +5,20 @@ let allMarkers = [];
 let allPaths = [];
 let filteredData = null;
 let heatmapLayer = null;
+let pane = null;
+
+// Tweakpane parameters
+const PARAMS = {
+    dateFrom: '',
+    dateTo: '',
+    uploadFile: () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = handleFileUpload;
+        input.click();
+    }
+};
 
 // Initialize the map
 function initMap() {
@@ -154,18 +168,14 @@ function addTimelinePathsToMap(paths) {
     // Convert timeline paths to heatmap data format
     const heatmapData = paths.map(point => [point.lat, point.lng, 1]); // [lat, lng, intensity]
 
-    // Get heatmap radius from control
-    const radius = document.getElementById('heatmapRadius') ? 
-        parseInt(document.getElementById('heatmapRadius').value) : 25;
-
-    // Create heatmap layer
+    // Create heatmap layer with fixed settings
     heatmapLayer = L.heatLayer(heatmapData, {
-        radius: 10,       // Radius of each "point" of the heatmap
-        blur: 5,             // Amount of blur
-        minOpacity: 0.15,      // Minimum opacity of the heatmap
+        radius: 10,
+        blur: 5,
+        minOpacity: 0.15,
     }).addTo(map);
 
-    console.log(`Heatmap created with ${heatmapData.length} points, radius: ${radius}`);
+    console.log(`Heatmap created with ${heatmapData.length} points`);
 }
 
 // Update map with processed data
@@ -248,105 +258,133 @@ function filterDataByDate(data, fromDate, toDate) {
     return filtered;
 }
 
+// Handle file upload
+function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    console.log(`Loading file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+
+    const loading = document.getElementById('loading');
+    loading.classList.add('show');
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            console.log('Parsing JSON...');
+            
+            // For very large files, we need to be more careful with parsing
+            let data;
+            try {
+                data = JSON.parse(e.target.result);
+            } catch (parseError) {
+                console.error('JSON parsing failed:', parseError);
+                alert('Error: The JSON file is malformed. Please check the file format.');
+                return;
+            }
+            
+            console.log('JSON parsed successfully, processing timeline data...');
+            timelineData = processTimelineData(data);
+            filteredData = timelineData;
+            
+            console.log('Updating map...');
+            updateMap(filteredData);
+            updateStats(filteredData);
+            
+            // Set default date range in Tweakpane
+            if (timelineData.dateRange.start && timelineData.dateRange.end) {
+                PARAMS.dateFrom = timelineData.dateRange.start.toISOString().split('T')[0];
+                PARAMS.dateTo = timelineData.dateRange.end.toISOString().split('T')[0];
+                pane.refresh();
+            }
+            
+            console.log('Timeline visualization completed successfully!');
+            
+        } catch (error) {
+            console.error('Processing error:', error);
+            alert('Error processing file: ' + error.message);
+        } finally {
+            loading.classList.remove('show');
+        }
+    };
+    
+    reader.onerror = function() {
+        loading.classList.remove('show');
+        alert('Error reading file. The file might be too large for your browser to handle.');
+    };
+    
+    reader.readAsText(file);
+}
+
+// Apply date filter automatically
+function applyDateFilter() {
+    if (!timelineData) return;
+
+    const fromDate = PARAMS.dateFrom;
+    const toDate = PARAMS.dateTo;
+
+    filteredData = filterDataByDate(timelineData, fromDate, toDate);
+    updateMap(filteredData);
+    updateStats(filteredData);
+}
+
+// Initialize Tweakpane
+function initTweakpane() {
+    // Check if Tweakpane is loaded
+    if (typeof Tweakpane === 'undefined') {
+        console.error('Tweakpane is not loaded');
+        return;
+    }
+
+    const container = document.getElementById('tweakpane-container');
+    if (!container) {
+        console.error('Tweakpane container not found');
+        return;
+    }
+
+    pane = new Tweakpane.Pane({
+        container: container,
+        title: 'Timeline Controls',
+        expanded: true
+    });
+
+    // Upload button
+    pane.addButton({
+        title: '📁 Upload Timeline.json',
+    }).on('click', PARAMS.uploadFile);
+
+    // Date filters
+    const dateFolder = pane.addFolder({
+        title: 'Date Filter',
+        expanded: true
+    });
+
+    dateFolder.addInput(PARAMS, 'dateFrom', {
+        label: 'From'
+    }).on('change', applyDateFilter);
+
+    dateFolder.addInput(PARAMS, 'dateTo', {
+        label: 'To'
+    }).on('change', applyDateFilter);
+
+    console.log('Tweakpane initialized successfully');
+}
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    
+    // Check if Tweakpane is available
+    console.log('Tweakpane available:', typeof Tweakpane !== 'undefined');
+    
     // Initialize map with a small delay to ensure container is properly sized
     setTimeout(() => {
+        console.log('Initializing map...');
         initMap();
+        
+        console.log('Initializing Tweakpane...');
+        initTweakpane();
     }, 100);
-
-    // File upload
-    document.getElementById('fileInput').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        console.log(`Loading file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-
-        const loading = document.getElementById('loading');
-        loading.classList.add('show');
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                console.log('Parsing JSON...');
-                
-                // For very large files, we need to be more careful with parsing
-                let data;
-                try {
-                    data = JSON.parse(e.target.result);
-                } catch (parseError) {
-                    console.error('JSON parsing failed:', parseError);
-                    alert('Error: The JSON file is too large or malformed. Try using a smaller date range or a different file.');
-                    return;
-                }
-                
-                console.log('JSON parsed successfully, processing timeline data...');
-                timelineData = processTimelineData(data);
-                filteredData = timelineData;
-                
-                console.log('Updating map...');
-                updateMap(filteredData);
-                updateStats(filteredData);
-                
-                // Set default date range
-                if (timelineData.dateRange.start && timelineData.dateRange.end) {
-                    document.getElementById('dateFrom').value = timelineData.dateRange.start.toISOString().split('T')[0];
-                    document.getElementById('dateTo').value = timelineData.dateRange.end.toISOString().split('T')[0];
-                }
-                
-                console.log('Timeline visualization completed successfully!');
-                
-            } catch (error) {
-                console.error('Processing error:', error);
-                alert('Error processing file: ' + error.message + '\n\nThe file might be too large. Try filtering to a smaller date range first.');
-            } finally {
-                loading.classList.remove('show');
-            }
-        };
-        
-        reader.onerror = function() {
-            loading.classList.remove('show');
-            alert('Error reading file. The file might be too large for your browser to handle.');
-        };
-        
-        reader.readAsText(file);
-    });
-
-    // Apply filter
-    document.getElementById('applyFilter').addEventListener('click', function() {
-        if (!timelineData) return;
-
-        const fromDate = document.getElementById('dateFrom').value;
-        const toDate = document.getElementById('dateTo').value;
-
-        filteredData = filterDataByDate(timelineData, fromDate, toDate);
-        updateMap(filteredData);
-        updateStats(filteredData);
-    });
-
-    // Clear filter
-    document.getElementById('clearFilter').addEventListener('click', function() {
-        if (!timelineData) return;
-
-        document.getElementById('dateFrom').value = '';
-        document.getElementById('dateTo').value = '';
-        
-        filteredData = timelineData;
-        updateMap(filteredData);
-        updateStats(filteredData);
-    });
-
-    // Heatmap radius control
-    document.getElementById('heatmapRadius').addEventListener('input', function() {
-        if (!filteredData) return;
-        
-        // Only update the heatmap, not visits/activities
-        if (heatmapLayer) {
-            map.removeLayer(heatmapLayer);
-            heatmapLayer = null;
-        }
-        addTimelinePathsToMap(filteredData.timelinePaths);
-    });
 });
 
 // Handle file drag and drop

@@ -5,49 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Timeline History Visualizer</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tweakpane@3.1.10/dist/tweakpane.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1>📍 Timeline History Visualizer</h1>
-            <p>Visualize your Android location timeline data</p>
-        </header>
-
-        <div class="controls">
-            <div class="file-upload">
-                <input type="file" id="fileInput" accept=".json" />
-                <label for="fileInput" class="upload-btn">📁 Upload Timeline.json</label>
-                <div class="file-info">
-                    <small>⚠️ For files larger than 100MB, consider filtering by date range first</small>
-                </div>
-            </div>
-            
-            <div class="filters">
-                <div class="filter-group">
-                    <label for="dateFrom">From:</label>
-                    <input type="date" id="dateFrom" />
-                </div>
-                <div class="filter-group">
-                    <label for="dateTo">To:</label>
-                    <input type="date" id="dateTo" />
-                </div>
-                <div class="filter-group">
-                    <label for="heatmapRadius">Heatmap Radius:</label>
-                    <input type="range" id="heatmapRadius" min="10" max="50" value="25" />
-                </div>
-                <button id="applyFilter" class="filter-btn">Apply Filter</button>
-                <button id="clearFilter" class="filter-btn secondary">Clear</button>
-            </div>
-
-            <div class="legend">
-                <div class="legend-item">
-                    <span class="legend-color heatmap-layer"></span>
-                    <span>Location Heatmap</span>
-                </div>
-            </div>
-        </div>
-
+        <div id="tweakpane-container"></div>
+        
         <div class="main-content">
             <div class="map-container">
                 <div id="map"></div>
@@ -74,6 +38,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tweakpane@3.1.10/dist/tweakpane.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
