@@ -26,7 +26,7 @@ body {
 #tweakpane-container {
     position: absolute;
     top: 20px;
-    left: 20px;
+    right: 20px;
     z-index: 1000;
 }
 
@@ -91,7 +91,7 @@ body {
 @media (max-width: 768px) {
     #tweakpane-container {
         top: 10px;
-        left: 10px;
+        right: 10px;
     }
 }
 
