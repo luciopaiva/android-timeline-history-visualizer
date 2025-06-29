@@ -1,4 +1,5 @@
-# Timeline History Visualizer
+
+![atvh](athv.png)
 
 A web app for visualizing Android location timeline data as an interactive heatmap.
 
