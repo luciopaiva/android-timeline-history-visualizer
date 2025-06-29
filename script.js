@@ -48,7 +48,7 @@ const TILE_LAYERS = {
 
 // Initialize the map
 function initMap() {
-    map = L.map('map').setView([-22.9, -43.2], 11); // Default to Rio de Janeiro area based on the sample data
+    map = L.map('map').setView([0, 0], 2); // Start with world view
     
     // Initialize with default tile layer
     currentTileLayer = L.tileLayer(TILE_LAYERS[PARAMS.tileLayer].url, {
