@@ -53,35 +53,6 @@ body {
     width: 100%;
 }
 
-.map-info {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    backdrop-filter: blur(10px);
-    min-width: 200px;
-}
-
-.stats {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.stat-item {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.9rem;
-}
-
-.stat-label {
-    font-weight: 600;
-    color: #666;
-}
-
 .loading {
     display: none;
     position: fixed;
@@ -121,15 +92,6 @@ body {
     #tweakpane-container {
         top: 10px;
         left: 10px;
-    }
-    
-    .map-info {
-        position: absolute;
-        top: auto;
-        bottom: 20px;
-        right: 20px;
-        left: 20px;
-        background: rgba(255, 255, 255, 0.95);
     }
 }
 

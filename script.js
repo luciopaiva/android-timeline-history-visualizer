@@ -214,23 +214,6 @@ function updateMap(data) {
     }
 }
 
-// Update statistics
-function updateStats(data) {
-    if (!data) {
-        document.getElementById('totalPoints').textContent = '0';
-        document.getElementById('dateRange').textContent = '-';
-        return;
-    }
-
-    document.getElementById('totalPoints').textContent = data.timelinePaths.length.toLocaleString();
-    
-    if (data.dateRange.start && data.dateRange.end) {
-        const startDate = data.dateRange.start.toLocaleDateString();
-        const endDate = data.dateRange.end.toLocaleDateString();
-        document.getElementById('dateRange').textContent = `${startDate} - ${endDate}`;
-    }
-}
-
 // Filter data by date range
 function filterDataByDate(data, fromDate, toDate) {
     if (!data || (!fromDate && !toDate)) return data;
@@ -289,7 +272,6 @@ function handleFileUpload(e) {
             
             console.log('Updating map...');
             updateMap(filteredData);
-            updateStats(filteredData);
             
             // Set default date range in Tweakpane
             if (timelineData.dateRange.start && timelineData.dateRange.end) {
@@ -325,7 +307,6 @@ function applyDateFilter() {
 
     filteredData = filterDataByDate(timelineData, fromDate, toDate);
     updateMap(filteredData);
-    updateStats(filteredData);
 }
 
 // Initialize Tweakpane
