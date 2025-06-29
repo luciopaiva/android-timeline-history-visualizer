@@ -76,6 +76,16 @@ body {
     box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
 }
 
+.file-info {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.file-info small {
+    color: #666;
+    font-size: 0.8rem;
+}
+
 .filters {
     display: flex;
     gap: 15px;
@@ -153,6 +163,10 @@ body {
 
 .legend-color.timeline-path {
     background: #ff6b6b;
+}
+
+.legend-color.heatmap-layer {
+    background: linear-gradient(90deg, #0066ff 0%, #ff6600 50%, #ff0000 100%);
 }
 
 .legend-color.visit-marker {

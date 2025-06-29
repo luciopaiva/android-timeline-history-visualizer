@@ -18,6 +18,9 @@
             <div class="file-upload">
                 <input type="file" id="fileInput" accept=".json" />
                 <label for="fileInput" class="upload-btn">📁 Upload Timeline.json</label>
+                <div class="file-info">
+                    <small>⚠️ For files larger than 100MB, consider filtering by date range first</small>
+                </div>
             </div>
             
             <div class="filters">
@@ -29,14 +32,18 @@
                     <label for="dateTo">To:</label>
                     <input type="date" id="dateTo" />
                 </div>
+                <div class="filter-group">
+                    <label for="heatmapRadius">Heatmap Radius:</label>
+                    <input type="range" id="heatmapRadius" min="10" max="50" value="25" />
+                </div>
                 <button id="applyFilter" class="filter-btn">Apply Filter</button>
                 <button id="clearFilter" class="filter-btn secondary">Clear</button>
             </div>
 
             <div class="legend">
                 <div class="legend-item">
-                    <span class="legend-color timeline-path"></span>
-                    <span>Timeline Path</span>
+                    <span class="legend-color heatmap-layer"></span>
+                    <span>Location Heatmap</span>
                 </div>
                 <div class="legend-item">
                     <span class="legend-color visit-marker"></span>
@@ -89,6 +96,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

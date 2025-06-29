@@ -4,6 +4,7 @@ let timelineData = null;
 let allMarkers = [];
 let allPaths = [];
 let filteredData = null;
+let heatmapLayer = null;
 
 // Initialize the map
 function initMap() {
@@ -17,17 +18,35 @@ function initMap() {
 
 // Parse coordinate string to lat/lng object
 function parseCoordinate(coordString) {
-    // Handle both formats: "lat°, lng°" and "lat, lng"
-    const cleanCoord = coordString.replace(/°/g, '');
-    const parts = cleanCoord.split(',').map(part => parseFloat(part.trim()));
-    
-    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-        return { lat: parts[0], lng: parts[1] };
+    try {
+        if (!coordString || typeof coordString !== 'string') {
+            return null;
+        }
+        
+        // Handle both formats: "lat°, lng°" and "lat, lng"
+        const cleanCoord = coordString.replace(/°/g, '').trim();
+        const parts = cleanCoord.split(',');
+        
+        if (parts.length !== 2) {
+            return null;
+        }
+        
+        const lat = parseFloat(parts[0].trim());
+        const lng = parseFloat(parts[1].trim());
+        
+        // Validate coordinates are within valid ranges
+        if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            return null;
+        }
+        
+        return { lat: lat, lng: lng };
+    } catch (error) {
+        console.warn('Error parsing coordinate:', coordString, error);
+        return null;
     }
-    return null;
 }
 
-// Process timeline data
+// Process timeline data with streaming for large files
 function processTimelineData(data) {
     const processed = {
         timelinePaths: [],
@@ -41,65 +60,103 @@ function processTimelineData(data) {
         return processed;
     }
 
-    data.semanticSegments.forEach(segment => {
-        const startTime = new Date(segment.startTime);
-        const endTime = new Date(segment.endTime);
+    console.log(`Processing ${data.semanticSegments.length} segments...`);
+    
+    // Process segments in smaller batches to avoid stack overflow
+    const segments = data.semanticSegments;
+    const batchSize = 100; // Process 100 segments at a time
+    
+    for (let i = 0; i < segments.length; i += batchSize) {
+        const batch = segments.slice(i, i + batchSize);
+        
+        batch.forEach(segment => {
+            try {
+                const startTime = new Date(segment.startTime);
+                const endTime = new Date(segment.endTime);
 
-        // Update date range
-        if (!processed.dateRange.start || startTime < processed.dateRange.start) {
-            processed.dateRange.start = startTime;
-        }
-        if (!processed.dateRange.end || endTime > processed.dateRange.end) {
-            processed.dateRange.end = endTime;
-        }
+                // Update date range
+                if (!processed.dateRange.start || startTime < processed.dateRange.start) {
+                    processed.dateRange.start = startTime;
+                }
+                if (!processed.dateRange.end || endTime > processed.dateRange.end) {
+                    processed.dateRange.end = endTime;
+                }
 
-        // Process timeline paths
-        if (segment.timelinePath) {
-            segment.timelinePath.forEach(point => {
-                const coord = parseCoordinate(point.point);
-                if (coord) {
-                    processed.timelinePaths.push({
-                        ...coord,
-                        time: new Date(point.time),
-                        originalTime: point.time
+                // Process timeline paths with aggressive sampling for large datasets
+                if (segment.timelinePath && Array.isArray(segment.timelinePath)) {
+                    // Sample more aggressively for very large paths
+                    const sampleRate = segment.timelinePath.length > 1000 ? 50 : 10;
+                    
+                    segment.timelinePath.forEach((point, index) => {
+                        if (index % sampleRate === 0 || index === segment.timelinePath.length - 1) {
+                            const coord = parseCoordinate(point.point);
+                            if (coord && !isNaN(coord.lat) && !isNaN(coord.lng)) {
+                                processed.timelinePaths.push({
+                                    lat: coord.lat,
+                                    lng: coord.lng,
+                                    time: new Date(point.time),
+                                    originalTime: point.time
+                                });
+                            }
+                        }
                     });
                 }
-            });
-        }
 
-        // Process visits
-        if (segment.visit && segment.visit.topCandidate && segment.visit.topCandidate.placeLocation) {
-            const coord = parseCoordinate(segment.visit.topCandidate.placeLocation.latLng);
-            if (coord) {
-                processed.visits.push({
-                    ...coord,
-                    startTime: startTime,
-                    endTime: endTime,
-                    semanticType: segment.visit.topCandidate.semanticType || 'UNKNOWN',
-                    placeId: segment.visit.topCandidate.placeId,
-                    probability: segment.visit.topCandidate.probability || 0
-                });
+                // Process visits
+                if (segment.visit && segment.visit.topCandidate && segment.visit.topCandidate.placeLocation) {
+                    const coord = parseCoordinate(segment.visit.topCandidate.placeLocation.latLng);
+                    if (coord && !isNaN(coord.lat) && !isNaN(coord.lng)) {
+                        processed.visits.push({
+                            lat: coord.lat,
+                            lng: coord.lng,
+                            startTime: startTime,
+                            endTime: endTime,
+                            semanticType: segment.visit.topCandidate.semanticType || 'UNKNOWN',
+                            placeId: segment.visit.topCandidate.placeId || 'unknown',
+                            probability: segment.visit.topCandidate.probability || 0
+                        });
+                    }
+                }
+
+                // Process activities
+                if (segment.activity) {
+                    const startCoord = segment.activity.start ? parseCoordinate(segment.activity.start.latLng) : null;
+                    const endCoord = segment.activity.end ? parseCoordinate(segment.activity.end.latLng) : null;
+                    
+                    if (startCoord && endCoord && 
+                        !isNaN(startCoord.lat) && !isNaN(startCoord.lng) &&
+                        !isNaN(endCoord.lat) && !isNaN(endCoord.lng)) {
+                        processed.activities.push({
+                            start: startCoord,
+                            end: endCoord,
+                            startTime: startTime,
+                            endTime: endTime,
+                            distance: segment.activity.distanceMeters || 0,
+                            activityType: segment.activity.topCandidate?.type || 'UNKNOWN_ACTIVITY_TYPE'
+                        });
+                    }
+                }
+            } catch (segmentError) {
+                console.warn('Error processing segment:', segmentError);
+                // Continue with next segment
             }
+        });
+        
+        // Update progress
+        if (i % 1000 === 0) {
+            const progress = Math.round((i / segments.length) * 100);
+            console.log(`Processing progress: ${progress}%`);
         }
+    }
 
-        // Process activities
-        if (segment.activity) {
-            const startCoord = segment.activity.start ? parseCoordinate(segment.activity.start.latLng) : null;
-            const endCoord = segment.activity.end ? parseCoordinate(segment.activity.end.latLng) : null;
-            
-            if (startCoord && endCoord) {
-                processed.activities.push({
-                    start: startCoord,
-                    end: endCoord,
-                    startTime: startTime,
-                    endTime: endTime,
-                    distance: segment.activity.distanceMeters || 0,
-                    activityType: segment.activity.topCandidate?.type || 'UNKNOWN_ACTIVITY_TYPE'
-                });
-            }
-        }
-    });
+    // Limit timeline points if still too many (cap at 50,000 for heatmap performance)
+    if (processed.timelinePaths.length > 50000) {
+        console.log(`Reducing ${processed.timelinePaths.length} timeline points to 50,000`);
+        const step = Math.ceil(processed.timelinePaths.length / 50000);
+        processed.timelinePaths = processed.timelinePaths.filter((_, index) => index % step === 0);
+    }
 
+    console.log(`Processed: ${processed.timelinePaths.length} timeline points, ${processed.visits.length} visits, ${processed.activities.length} activities`);
     return processed;
 }
 
@@ -107,48 +164,43 @@ function processTimelineData(data) {
 function clearMapLayers() {
     allMarkers.forEach(marker => map.removeLayer(marker));
     allPaths.forEach(path => map.removeLayer(path));
+    if (heatmapLayer) {
+        map.removeLayer(heatmapLayer);
+        heatmapLayer = null;
+    }
     allMarkers = [];
     allPaths = [];
 }
 
-// Add timeline paths to map
+// Add timeline paths as heatmap to map
 function addTimelinePathsToMap(paths) {
     if (paths.length === 0) return;
 
-    // Create polyline from all points
-    const latLngs = paths.map(point => [point.lat, point.lng]);
-    
-    const polyline = L.polyline(latLngs, {
-        color: '#ff6b6b',
-        weight: 3,
-        opacity: 0.7
-    }).addTo(map);
-    
-    allPaths.push(polyline);
+    console.log(`Creating heatmap from ${paths.length} timeline points`);
 
-    // Add markers for individual points (show only every 10th point to avoid clutter)
-    paths.forEach((point, index) => {
-        if (index % 10 === 0 || index === paths.length - 1) {
-            const marker = L.circleMarker([point.lat, point.lng], {
-                radius: 4,
-                fillColor: '#ff6b6b',
-                color: '#fff',
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 0.8
-            }).addTo(map);
+    // Convert timeline paths to heatmap data format
+    const heatmapData = paths.map(point => [point.lat, point.lng, 1]); // [lat, lng, intensity]
 
-            marker.bindPopup(`
-                <div class="popup-title">📍 Timeline Point</div>
-                <div class="popup-time">${point.time.toLocaleString()}</div>
-                <div class="popup-details">
-                    Coordinates: ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}
-                </div>
-            `);
+    // Get heatmap radius from control
+    const radius = document.getElementById('heatmapRadius') ? 
+        parseInt(document.getElementById('heatmapRadius').value) : 25;
 
-            allMarkers.push(marker);
+    // Create heatmap layer
+    heatmapLayer = L.heatLayer(heatmapData, {
+        radius: radius,       // Radius of each "point" of the heatmap
+        blur: 15,             // Amount of blur
+        maxZoom: 18,          // Maximum zoom where the heatmap is visible
+        max: 1.0,             // Maximum point intensity
+        gradient: {           // Color gradient
+            0.0: '#0066ff',   // Blue for low density
+            0.3: '#00ff00',   // Green
+            0.6: '#ffff00',   // Yellow
+            0.8: '#ff6600',   // Orange
+            1.0: '#ff0000'    // Red for high density
         }
-    });
+    }).addTo(map);
+
+    console.log(`Heatmap created with ${heatmapData.length} points, radius: ${radius}`);
 }
 
 // Add visits to map
@@ -244,6 +296,8 @@ function updateMap(data) {
     
     if (!data) return;
 
+    console.log(`Updating map with ${data.timelinePaths.length} timeline points, ${data.visits.length} visits, ${data.activities.length} activities`);
+
     addTimelinePathsToMap(data.timelinePaths);
     addVisitsToMap(data.visits);
     addActivitiesToMap(data.activities);
@@ -259,8 +313,16 @@ function updateMap(data) {
     });
 
     if (allPoints.length > 0) {
-        const group = new L.featureGroup(allMarkers.concat(allPaths));
-        map.fitBounds(group.getBounds().pad(0.1));
+        // Calculate bounds from all points
+        const latitudes = allPoints.map(point => point[0]);
+        const longitudes = allPoints.map(point => point[1]);
+        
+        const bounds = [
+            [Math.min(...latitudes), Math.min(...longitudes)],
+            [Math.max(...latitudes), Math.max(...longitudes)]
+        ];
+        
+        map.fitBounds(bounds, { padding: [20, 20] });
     }
 }
 
@@ -411,16 +473,31 @@ document.addEventListener('DOMContentLoaded', function() {
         const file = e.target.files[0];
         if (!file) return;
 
+        console.log(`Loading file: ${file.name}, size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+
         const loading = document.getElementById('loading');
         loading.classList.add('show');
 
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                const data = JSON.parse(e.target.result);
+                console.log('Parsing JSON...');
+                
+                // For very large files, we need to be more careful with parsing
+                let data;
+                try {
+                    data = JSON.parse(e.target.result);
+                } catch (parseError) {
+                    console.error('JSON parsing failed:', parseError);
+                    alert('Error: The JSON file is too large or malformed. Try using a smaller date range or a different file.');
+                    return;
+                }
+                
+                console.log('JSON parsed successfully, processing timeline data...');
                 timelineData = processTimelineData(data);
                 filteredData = timelineData;
                 
+                console.log('Updating map...');
                 updateMap(filteredData);
                 updateStats(filteredData);
                 updateTimelineDetails(filteredData);
@@ -431,12 +508,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('dateTo').value = timelineData.dateRange.end.toISOString().split('T')[0];
                 }
                 
+                console.log('Timeline visualization completed successfully!');
+                
             } catch (error) {
-                alert('Error parsing JSON file: ' + error.message);
-                console.error('JSON parsing error:', error);
+                console.error('Processing error:', error);
+                alert('Error processing file: ' + error.message + '\n\nThe file might be too large. Try filtering to a smaller date range first.');
             } finally {
                 loading.classList.remove('show');
             }
+        };
+        
+        reader.onerror = function() {
+            loading.classList.remove('show');
+            alert('Error reading file. The file might be too large for your browser to handle.');
         };
         
         reader.readAsText(file);
@@ -466,6 +550,18 @@ document.addEventListener('DOMContentLoaded', function() {
         updateMap(filteredData);
         updateStats(filteredData);
         updateTimelineDetails(filteredData);
+    });
+
+    // Heatmap radius control
+    document.getElementById('heatmapRadius').addEventListener('input', function() {
+        if (!filteredData) return;
+        
+        // Only update the heatmap, not visits/activities
+        if (heatmapLayer) {
+            map.removeLayer(heatmapLayer);
+            heatmapLayer = null;
+        }
+        addTimelinePathsToMap(filteredData.timelinePaths);
     });
 });
 
