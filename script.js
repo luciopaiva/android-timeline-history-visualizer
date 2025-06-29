@@ -160,17 +160,9 @@ function addTimelinePathsToMap(paths) {
 
     // Create heatmap layer
     heatmapLayer = L.heatLayer(heatmapData, {
-        radius: radius,       // Radius of each "point" of the heatmap
-        blur: 15,             // Amount of blur
-        maxZoom: 18,          // Maximum zoom where the heatmap is visible
-        max: 1.0,             // Maximum point intensity
-        gradient: {           // Color gradient
-            0.0: '#0066ff',   // Blue for low density
-            0.3: '#00ff00',   // Green
-            0.6: '#ffff00',   // Yellow
-            0.8: '#ff6600',   // Orange
-            1.0: '#ff0000'    // Red for high density
-        }
+        radius: 10,       // Radius of each "point" of the heatmap
+        blur: 5,             // Amount of blur
+        minOpacity: 0.15,      // Minimum opacity of the heatmap
     }).addTo(map);
 
     console.log(`Heatmap created with ${heatmapData.length} points, radius: ${radius}`);
