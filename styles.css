@@ -178,9 +178,7 @@ body {
 }
 
 .main-content {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 20px;
+    display: block;
     height: 70vh;
 }
 
@@ -190,6 +188,8 @@ body {
     border-radius: 15px;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    height: 100%;
+    width: 100%;
 }
 
 #map {
@@ -224,74 +224,6 @@ body {
 .stat-label {
     font-weight: 600;
     color: #666;
-}
-
-.timeline-panel {
-    background: white;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    overflow-y: auto;
-}
-
-.timeline-panel h3 {
-    margin-bottom: 15px;
-    color: #333;
-    border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 10px;
-}
-
-.timeline-content {
-    font-size: 0.9rem;
-    line-height: 1.6;
-}
-
-.placeholder {
-    text-align: center;
-    color: #999;
-    font-style: italic;
-    padding: 40px 20px;
-}
-
-.timeline-item {
-    padding: 15px;
-    margin-bottom: 15px;
-    border-left: 4px solid #667eea;
-    background: #f8f9ff;
-    border-radius: 0 8px 8px 0;
-    transition: all 0.3s ease;
-}
-
-.timeline-item:hover {
-    background: #f0f2ff;
-    transform: translateX(5px);
-}
-
-.timeline-item.visit {
-    border-left-color: #4ecdc4;
-    background: #f0fffe;
-}
-
-.timeline-item.activity {
-    border-left-color: #45b7d1;
-    background: #f0faff;
-}
-
-.timeline-item h4 {
-    margin-bottom: 8px;
-    color: #333;
-    font-size: 1rem;
-}
-
-.timeline-item .time {
-    color: #666;
-    font-size: 0.85rem;
-    margin-bottom: 5px;
-}
-
-.timeline-item .details {
-    color: #555;
-    font-size: 0.85rem;
 }
 
 .loading {
@@ -330,11 +262,6 @@ body {
 
 /* Responsive design */
 @media (max-width: 1024px) {
-    .main-content {
-        grid-template-columns: 1fr;
-        height: auto;
-    }
-    
     .map-container {
         height: 50vh;
         margin-bottom: 20px;

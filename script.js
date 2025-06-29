@@ -178,6 +178,16 @@ function addTimelinePathsToMap(paths) {
 
     console.log(`Creating heatmap from ${paths.length} timeline points`);
 
+    // Ensure map container has dimensions before creating heatmap
+    const mapContainer = map.getContainer();
+    if (!mapContainer.offsetWidth || !mapContainer.offsetHeight) {
+        console.warn('Map container has no dimensions, retrying...');
+        setTimeout(() => {
+            addTimelinePathsToMap(paths);
+        }, 100);
+        return;
+    }
+
     // Convert timeline paths to heatmap data format
     const heatmapData = paths.map(point => [point.lat, point.lng, 1]); // [lat, lng, intensity]
 
@@ -298,6 +308,11 @@ function updateMap(data) {
 
     console.log(`Updating map with ${data.timelinePaths.length} timeline points, ${data.visits.length} visits, ${data.activities.length} activities`);
 
+    // Ensure map is properly sized
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 100);
+
     addTimelinePathsToMap(data.timelinePaths);
     addVisitsToMap(data.visits);
     addActivitiesToMap(data.activities);
@@ -322,7 +337,9 @@ function updateMap(data) {
             [Math.max(...latitudes), Math.max(...longitudes)]
         ];
         
-        map.fitBounds(bounds, { padding: [20, 20] });
+        setTimeout(() => {
+            map.fitBounds(bounds, { padding: [20, 20] });
+        }, 200);
     }
 }
 
@@ -345,80 +362,6 @@ function updateStats(data) {
         const endDate = data.dateRange.end.toLocaleDateString();
         document.getElementById('dateRange').textContent = `${startDate} - ${endDate}`;
     }
-}
-
-// Update timeline details panel
-function updateTimelineDetails(data) {
-    const container = document.getElementById('timelineDetails');
-    
-    if (!data) {
-        container.innerHTML = '<p class="placeholder">Upload a Timeline.json file to see location history</p>';
-        return;
-    }
-
-    let html = '';
-    
-    // Combine and sort all events by time
-    const allEvents = [];
-    
-    data.visits.forEach(visit => {
-        allEvents.push({
-            type: 'visit',
-            time: visit.startTime,
-            data: visit
-        });
-    });
-    
-    data.activities.forEach(activity => {
-        allEvents.push({
-            type: 'activity',
-            time: activity.startTime,
-            data: activity
-        });
-    });
-    
-    // Sort by time (most recent first)
-    allEvents.sort((a, b) => b.time - a.time);
-    
-    // Show only the last 50 events to avoid performance issues
-    const recentEvents = allEvents.slice(0, 50);
-    
-    if (recentEvents.length === 0) {
-        html = '<p class="placeholder">No events found in the selected time range</p>';
-    } else {
-        recentEvents.forEach(event => {
-            if (event.type === 'visit') {
-                const visit = event.data;
-                const duration = (visit.endTime - visit.startTime) / (1000 * 60 * 60);
-                html += `
-                    <div class="timeline-item visit">
-                        <h4>🏠 ${visit.semanticType}</h4>
-                        <div class="time">${visit.startTime.toLocaleString()} - ${visit.endTime.toLocaleString()}</div>
-                        <div class="details">
-                            Duration: ${duration.toFixed(1)} hours<br>
-                            Confidence: ${(visit.probability * 100).toFixed(1)}%
-                        </div>
-                    </div>
-                `;
-            } else if (event.type === 'activity') {
-                const activity = event.data;
-                const duration = (activity.endTime - activity.startTime) / (1000 * 60);
-                const distance = (activity.distance / 1000).toFixed(2);
-                html += `
-                    <div class="timeline-item activity">
-                        <h4>🚶‍♂️ ${activity.activityType}</h4>
-                        <div class="time">${activity.startTime.toLocaleString()} - ${activity.endTime.toLocaleString()}</div>
-                        <div class="details">
-                            Duration: ${duration.toFixed(0)} minutes<br>
-                            Distance: ${distance} km
-                        </div>
-                    </div>
-                `;
-            }
-        });
-    }
-    
-    container.innerHTML = html;
 }
 
 // Filter data by date range
@@ -466,7 +409,10 @@ function filterDataByDate(data, fromDate, toDate) {
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    initMap();
+    // Initialize map with a small delay to ensure container is properly sized
+    setTimeout(() => {
+        initMap();
+    }, 100);
 
     // File upload
     document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -500,7 +446,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Updating map...');
                 updateMap(filteredData);
                 updateStats(filteredData);
-                updateTimelineDetails(filteredData);
                 
                 // Set default date range
                 if (timelineData.dateRange.start && timelineData.dateRange.end) {
@@ -536,7 +481,6 @@ document.addEventListener('DOMContentLoaded', function() {
         filteredData = filterDataByDate(timelineData, fromDate, toDate);
         updateMap(filteredData);
         updateStats(filteredData);
-        updateTimelineDetails(filteredData);
     });
 
     // Clear filter
@@ -549,7 +493,6 @@ document.addEventListener('DOMContentLoaded', function() {
         filteredData = timelineData;
         updateMap(filteredData);
         updateStats(filteredData);
-        updateTimelineDetails(filteredData);
     });
 
     // Heatmap radius control
