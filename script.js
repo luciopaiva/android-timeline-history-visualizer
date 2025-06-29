@@ -6,11 +6,13 @@ let allPaths = [];
 let filteredData = null;
 let heatmapLayer = null;
 let pane = null;
+let currentTileLayer = null;
 
 // Tweakpane parameters
 const PARAMS = {
     dateFrom: '',
     dateTo: '',
+    tileLayer: 'OpenStreetMap',
     uploadFile: () => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -20,14 +22,60 @@ const PARAMS = {
     }
 };
 
+// Tile layer options
+const TILE_LAYERS = {
+    'OpenStreetMap': {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '© OpenStreetMap contributors'
+    },
+    'OpenStreetMap Dark': {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        attribution: '© OpenStreetMap contributors © CARTO'
+    },
+    'OpenStreetMap Light': {
+        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        attribution: '© OpenStreetMap contributors © CARTO'
+    },
+    'Satellite': {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attribution: '© Esri © OpenStreetMap contributors'
+    },
+    'Terrain': {
+        url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        attribution: '© OpenTopoMap (CC-BY-SA) © OpenStreetMap contributors'
+    }
+};
+
 // Initialize the map
 function initMap() {
     map = L.map('map').setView([-22.9, -43.2], 11); // Default to Rio de Janeiro area based on the sample data
     
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors | <a href="https://luciopaiva.com">luciopaiva.com</a> |  This app is <a href="https://github.com/luciopaiva/android-timeline-history-visualizer" target="_blank">open source</a>',
+    // Initialize with default tile layer
+    currentTileLayer = L.tileLayer(TILE_LAYERS[PARAMS.tileLayer].url, {
+        attribution: TILE_LAYERS[PARAMS.tileLayer].attribution + ' | <a href="https://luciopaiva.com">luciopaiva.com</a> | This app is <a href="https://github.com/luciopaiva/android-timeline-history-visualizer" target="_blank">open source</a>',
         maxZoom: 18
     }).addTo(map);
+}
+
+// Change tile layer
+function changeTileLayer(layerName) {
+    if (!map || !TILE_LAYERS[layerName]) {
+        console.error('Invalid tile layer:', layerName);
+        return;
+    }
+    
+    // Remove current tile layer
+    if (currentTileLayer) {
+        map.removeLayer(currentTileLayer);
+    }
+    
+    // Add new tile layer
+    currentTileLayer = L.tileLayer(TILE_LAYERS[layerName].url, {
+        attribution: TILE_LAYERS[layerName].attribution + ' | <a href="https://luciopaiva.com">luciopaiva.com</a> | This app is <a href="https://github.com/luciopaiva/android-timeline-history-visualizer" target="_blank">open source</a>',
+        maxZoom: 18
+    }).addTo(map);
+    
+    console.log('Tile layer changed to:', layerName);
 }
 
 // Parse coordinate string to lat/lng object
@@ -350,6 +398,22 @@ function initTweakpane() {
     pane.addButton({
         title: '📁 Upload Timeline.json',
     }).on('click', PARAMS.uploadFile);
+
+    // Map style selector
+    const mapFolder = pane.addFolder({
+        title: 'Map Style',
+        expanded: true
+    });
+
+    mapFolder.addInput(PARAMS, 'tileLayer', {
+        label: 'Style',
+        options: Object.keys(TILE_LAYERS).reduce((acc, key) => {
+            acc[key] = key;
+            return acc;
+        }, {})
+    }).on('change', (ev) => {
+        changeTileLayer(ev.value);
+    });
 
     // Date filters
     const dateFolder = pane.addFolder({
