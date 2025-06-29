@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeline History Visualizer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📍 Timeline History Visualizer</h1>
+            <p>Visualize your Android location timeline data</p>
+        </header>
+
+        <div class="controls">
+            <div class="file-upload">
+                <input type="file" id="fileInput" accept=".json" />
+                <label for="fileInput" class="upload-btn">📁 Upload Timeline.json</label>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="dateFrom">From:</label>
+                    <input type="date" id="dateFrom" />
+                </div>
+                <div class="filter-group">
+                    <label for="dateTo">To:</label>
+                    <input type="date" id="dateTo" />
+                </div>
+                <button id="applyFilter" class="filter-btn">Apply Filter</button>
+                <button id="clearFilter" class="filter-btn secondary">Clear</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="legend-color timeline-path"></span>
+                    <span>Timeline Path</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color visit-marker"></span>
+                    <span>Visits</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color activity-marker"></span>
+                    <span>Activities</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="map-info">
+                    <div id="stats" class="stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Points:</span>
+                            <span id="totalPoints">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Visits:</span>
+                            <span id="totalVisits">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Activities:</span>
+                            <span id="totalActivities">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Date Range:</span>
+                            <span id="dateRange">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="timeline-panel">
+                <h3>📅 Timeline Details</h3>
+                <div id="timelineDetails" class="timeline-content">
+                    <p class="placeholder">Upload a Timeline.json file to see location history</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing timeline data...</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
