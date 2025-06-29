@@ -270,9 +270,6 @@ function handleFileUpload(e) {
             timelineData = processTimelineData(data);
             filteredData = timelineData;
             
-            console.log('Updating map...');
-            updateMap(filteredData);
-            
             // Set default date range in Tweakpane
             if (timelineData.dateRange.start && timelineData.dateRange.end) {
                 PARAMS.dateFrom = timelineData.dateRange.start.toISOString().split('T')[0];
