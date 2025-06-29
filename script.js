@@ -50,8 +50,6 @@ function parseCoordinate(coordString) {
 function processTimelineData(data) {
     const processed = {
         timelinePaths: [],
-        visits: [],
-        activities: [],
         dateRange: { start: null, end: null }
     };
 
@@ -101,41 +99,6 @@ function processTimelineData(data) {
                         }
                     });
                 }
-
-                // Process visits
-                if (segment.visit && segment.visit.topCandidate && segment.visit.topCandidate.placeLocation) {
-                    const coord = parseCoordinate(segment.visit.topCandidate.placeLocation.latLng);
-                    if (coord && !isNaN(coord.lat) && !isNaN(coord.lng)) {
-                        processed.visits.push({
-                            lat: coord.lat,
-                            lng: coord.lng,
-                            startTime: startTime,
-                            endTime: endTime,
-                            semanticType: segment.visit.topCandidate.semanticType || 'UNKNOWN',
-                            placeId: segment.visit.topCandidate.placeId || 'unknown',
-                            probability: segment.visit.topCandidate.probability || 0
-                        });
-                    }
-                }
-
-                // Process activities
-                if (segment.activity) {
-                    const startCoord = segment.activity.start ? parseCoordinate(segment.activity.start.latLng) : null;
-                    const endCoord = segment.activity.end ? parseCoordinate(segment.activity.end.latLng) : null;
-                    
-                    if (startCoord && endCoord && 
-                        !isNaN(startCoord.lat) && !isNaN(startCoord.lng) &&
-                        !isNaN(endCoord.lat) && !isNaN(endCoord.lng)) {
-                        processed.activities.push({
-                            start: startCoord,
-                            end: endCoord,
-                            startTime: startTime,
-                            endTime: endTime,
-                            distance: segment.activity.distanceMeters || 0,
-                            activityType: segment.activity.topCandidate?.type || 'UNKNOWN_ACTIVITY_TYPE'
-                        });
-                    }
-                }
             } catch (segmentError) {
                 console.warn('Error processing segment:', segmentError);
                 // Continue with next segment
@@ -156,7 +119,7 @@ function processTimelineData(data) {
         processed.timelinePaths = processed.timelinePaths.filter((_, index) => index % step === 0);
     }
 
-    console.log(`Processed: ${processed.timelinePaths.length} timeline points, ${processed.visits.length} visits, ${processed.activities.length} activities`);
+    console.log(`Processed: ${processed.timelinePaths.length} timeline points`);
     return processed;
 }
 
@@ -213,100 +176,13 @@ function addTimelinePathsToMap(paths) {
     console.log(`Heatmap created with ${heatmapData.length} points, radius: ${radius}`);
 }
 
-// Add visits to map
-function addVisitsToMap(visits) {
-    visits.forEach(visit => {
-        const marker = L.marker([visit.lat, visit.lng], {
-            icon: L.divIcon({
-                className: 'visit-marker',
-                html: '🏠',
-                iconSize: [25, 25],
-                iconAnchor: [12, 12]
-            })
-        }).addTo(map);
-
-        const duration = (visit.endTime - visit.startTime) / (1000 * 60 * 60); // hours
-        
-        marker.bindPopup(`
-            <div class="popup-title">🏠 ${visit.semanticType}</div>
-            <div class="popup-time">
-                ${visit.startTime.toLocaleString()} - ${visit.endTime.toLocaleString()}
-            </div>
-            <div class="popup-details">
-                Duration: ${duration.toFixed(1)} hours<br>
-                Confidence: ${(visit.probability * 100).toFixed(1)}%<br>
-                Place ID: ${visit.placeId}
-            </div>
-        `);
-
-        allMarkers.push(marker);
-    });
-}
-
-// Add activities to map
-function addActivitiesToMap(activities) {
-    activities.forEach(activity => {
-        // Start marker
-        const startMarker = L.marker([activity.start.lat, activity.start.lng], {
-            icon: L.divIcon({
-                className: 'activity-marker',
-                html: '🚶‍♂️',
-                iconSize: [25, 25],
-                iconAnchor: [12, 12]
-            })
-        }).addTo(map);
-
-        // End marker
-        const endMarker = L.marker([activity.end.lat, activity.end.lng], {
-            icon: L.divIcon({
-                className: 'activity-marker',
-                html: '🏁',
-                iconSize: [25, 25],
-                iconAnchor: [12, 12]
-            })
-        }).addTo(map);
-
-        // Path between start and end
-        const path = L.polyline([
-            [activity.start.lat, activity.start.lng],
-            [activity.end.lat, activity.end.lng]
-        ], {
-            color: '#45b7d1',
-            weight: 4,
-            opacity: 0.8,
-            dashArray: '10, 5'
-        }).addTo(map);
-
-        const duration = (activity.endTime - activity.startTime) / (1000 * 60); // minutes
-        const distance = (activity.distance / 1000).toFixed(2); // km
-
-        const popupContent = `
-            <div class="popup-title">🚶‍♂️ ${activity.activityType}</div>
-            <div class="popup-time">
-                ${activity.startTime.toLocaleString()} - ${activity.endTime.toLocaleString()}
-            </div>
-            <div class="popup-details">
-                Duration: ${duration.toFixed(0)} minutes<br>
-                Distance: ${distance} km
-            </div>
-        `;
-
-        startMarker.bindPopup(popupContent);
-        endMarker.bindPopup(popupContent);
-        path.bindPopup(popupContent);
-
-        allMarkers.push(startMarker, endMarker);
-        allPaths.push(path);
-    });
-}
-
 // Update map with processed data
 function updateMap(data) {
     clearMapLayers();
     
     if (!data) return;
 
-    console.log(`Updating map with ${data.timelinePaths.length} timeline points, ${data.visits.length} visits, ${data.activities.length} activities`);
+    console.log(`Updating map with ${data.timelinePaths.length} timeline points`);
 
     // Ensure map is properly sized
     setTimeout(() => {
@@ -314,18 +190,11 @@ function updateMap(data) {
     }, 100);
 
     addTimelinePathsToMap(data.timelinePaths);
-    addVisitsToMap(data.visits);
-    addActivitiesToMap(data.activities);
 
     // Fit map bounds to show all data
     const allPoints = [];
     
     data.timelinePaths.forEach(point => allPoints.push([point.lat, point.lng]));
-    data.visits.forEach(visit => allPoints.push([visit.lat, visit.lng]));
-    data.activities.forEach(activity => {
-        allPoints.push([activity.start.lat, activity.start.lng]);
-        allPoints.push([activity.end.lat, activity.end.lng]);
-    });
 
     if (allPoints.length > 0) {
         // Calculate bounds from all points
@@ -347,15 +216,11 @@ function updateMap(data) {
 function updateStats(data) {
     if (!data) {
         document.getElementById('totalPoints').textContent = '0';
-        document.getElementById('totalVisits').textContent = '0';
-        document.getElementById('totalActivities').textContent = '0';
         document.getElementById('dateRange').textContent = '-';
         return;
     }
 
     document.getElementById('totalPoints').textContent = data.timelinePaths.length.toLocaleString();
-    document.getElementById('totalVisits').textContent = data.visits.length.toLocaleString();
-    document.getElementById('totalActivities').textContent = data.activities.length.toLocaleString();
     
     if (data.dateRange.start && data.dateRange.end) {
         const startDate = data.dateRange.start.toLocaleDateString();
@@ -370,8 +235,6 @@ function filterDataByDate(data, fromDate, toDate) {
 
     const filtered = {
         timelinePaths: [],
-        visits: [],
-        activities: [],
         dateRange: data.dateRange
     };
 
@@ -387,20 +250,6 @@ function filterDataByDate(data, fromDate, toDate) {
     filtered.timelinePaths = data.timelinePaths.filter(point => {
         if (from && point.time < from) return false;
         if (to && point.time > to) return false;
-        return true;
-    });
-
-    // Filter visits
-    filtered.visits = data.visits.filter(visit => {
-        if (from && visit.startTime < from) return false;
-        if (to && visit.startTime > to) return false;
-        return true;
-    });
-
-    // Filter activities
-    filtered.activities = data.activities.filter(activity => {
-        if (from && activity.startTime < from) return false;
-        if (to && activity.startTime > to) return false;
         return true;
     });
 
