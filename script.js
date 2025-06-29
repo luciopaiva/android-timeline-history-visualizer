@@ -343,6 +343,49 @@ function handleFileUpload(e) {
     reader.readAsText(file);
 }
 
+// Load demo data
+function loadDemoData() {
+    console.log('Loading demo data...');
+    
+    const loading = document.getElementById('loading');
+    loading.classList.add('show');
+    
+    // Fetch the sample timeline data
+    fetch('./sample-timeline.json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Demo data loaded successfully');
+            hideUploadDialog();
+            
+            timelineData = processTimelineData(data);
+            filteredData = timelineData;
+            
+            // Set default date range in Tweakpane
+            if (timelineData.dateRange.start && timelineData.dateRange.end) {
+                PARAMS.dateFrom = timelineData.dateRange.start.toISOString().split('T')[0];
+                PARAMS.dateTo = timelineData.dateRange.end.toISOString().split('T')[0];
+                if (pane) {
+                    pane.refresh();
+                }
+            }
+            
+            updateMap(filteredData);
+            console.log('Demo visualization completed successfully!');
+        })
+        .catch(error => {
+            console.error('Error loading demo data:', error);
+            alert('Error loading demo data. Please try uploading your own file.');
+        })
+        .finally(() => {
+            loading.classList.remove('show');
+        });
+}
+
 // Apply date filter automatically
 function applyDateFilter() {
     if (!timelineData) return;
@@ -399,6 +442,11 @@ function initTweakpane() {
         title: '📁 Upload Timeline.json',
     }).on('click', PARAMS.uploadFile);
 
+    // Demo button
+    pane.addButton({
+        title: '🌍 Try Demo Data',
+    }).on('click', loadDemoData);
+
     // Map style selector
     const mapFolder = pane.addFolder({
         title: 'Map Style',
@@ -452,9 +500,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadDialogBtn = document.getElementById('upload-dialog-btn');
     const uploadDialogInput = document.getElementById('upload-dialog-input');
     const uploadDialogDrop = document.querySelector('.upload-dialog-drop');
+    const demoBtn = document.getElementById('demo-btn');
     
     uploadDialogBtn.addEventListener('click', () => {
         uploadDialogInput.click();
+    });
+    
+    demoBtn.addEventListener('click', () => {
+        loadDemoData();
     });
     
     uploadDialogInput.addEventListener('change', (e) => {
