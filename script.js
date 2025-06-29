@@ -25,7 +25,7 @@ function initMap() {
     map = L.map('map').setView([-22.9, -43.2], 11); // Default to Rio de Janeiro area based on the sample data
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
+        attribution: '© OpenStreetMap contributors | <a href="https://luciopaiva.com">luciopaiva.com</a> |  This app is <a href="https://github.com/luciopaiva/android-timeline-history-visualizer" target="_blank">open source</a>',
         maxZoom: 18
     }).addTo(map);
 }
