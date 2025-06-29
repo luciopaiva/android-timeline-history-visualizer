@@ -306,6 +306,26 @@ function applyDateFilter() {
     updateMap(filteredData);
 }
 
+// Hide upload dialog
+function hideUploadDialog() {
+    const dialog = document.getElementById('upload-dialog');
+    dialog.classList.add('hidden');
+}
+
+// Show upload dialog
+function showUploadDialog() {
+    const dialog = document.getElementById('upload-dialog');
+    dialog.classList.remove('hidden');
+}
+
+// Handle file upload from dialog or tweakpane
+function handleFileUploadFromDialog(file) {
+    if (!file) return;
+    
+    hideUploadDialog();
+    handleFileUpload({ target: { files: [file] } });
+}
+
 // Initialize Tweakpane
 function initTweakpane() {
     // Check if Tweakpane is loaded
@@ -363,9 +383,45 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Initializing Tweakpane...');
         initTweakpane();
     }, 100);
+    
+    // Upload dialog handlers
+    const uploadDialogBtn = document.getElementById('upload-dialog-btn');
+    const uploadDialogInput = document.getElementById('upload-dialog-input');
+    const uploadDialogDrop = document.querySelector('.upload-dialog-drop');
+    
+    uploadDialogBtn.addEventListener('click', () => {
+        uploadDialogInput.click();
+    });
+    
+    uploadDialogInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleFileUploadFromDialog(file);
+        }
+    });
+    
+    // Drag and drop for dialog
+    uploadDialogDrop.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadDialogDrop.classList.add('drag-over');
+    });
+    
+    uploadDialogDrop.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        uploadDialogDrop.classList.remove('drag-over');
+    });
+    
+    uploadDialogDrop.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadDialogDrop.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].name.endsWith('.json')) {
+            handleFileUploadFromDialog(files[0]);
+        }
+    });
 });
 
-// Handle file drag and drop
+// Handle file drag and drop globally
 document.addEventListener('dragover', function(e) {
     e.preventDefault();
 });
@@ -374,7 +430,12 @@ document.addEventListener('drop', function(e) {
     e.preventDefault();
     const files = e.dataTransfer.files;
     if (files.length > 0 && files[0].name.endsWith('.json')) {
-        document.getElementById('fileInput').files = files;
-        document.getElementById('fileInput').dispatchEvent(new Event('change'));
+        // If dialog is open, use dialog handler, otherwise use tweakpane handler
+        const dialog = document.getElementById('upload-dialog');
+        if (!dialog.classList.contains('hidden')) {
+            handleFileUploadFromDialog(files[0]);
+        } else {
+            handleFileUpload({ target: { files: files } });
+        }
     }
 });

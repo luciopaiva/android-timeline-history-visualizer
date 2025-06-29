@@ -12,6 +12,27 @@
     <div class="container">
         <div id="tweakpane-container"></div>
         
+        <div id="upload-dialog" class="upload-dialog">
+            <div class="upload-dialog-content">
+                <h2>📍 Timeline History Visualizer</h2>
+                <p>Upload your Android Timeline.json file to visualize your location history as a heatmap</p>
+                
+                <button id="upload-dialog-btn" class="upload-dialog-button">
+                    📁 Choose Timeline.json File
+                </button>
+                
+                <div class="upload-dialog-divider">
+                    <span>or</span>
+                </div>
+                
+                <div class="upload-dialog-drop">
+                    📂 Drop your Timeline.json file anywhere on this window
+                </div>
+                
+                <input type="file" id="upload-dialog-input" accept=".json" style="display: none;" />
+            </div>
+        </div>
+        
         <div class="main-content">
             <div class="map-container">
                 <div id="map"></div>
