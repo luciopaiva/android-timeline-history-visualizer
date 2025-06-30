@@ -86,11 +86,80 @@ const HEATMAP_GRADIENTS = {
     }
 };
 
+// Save heatmap settings to localStorage
+function saveHeatmapSettings() {
+    const heatmapSettings = {
+        heatmapRadius: PARAMS.heatmapRadius,
+        heatmapBlur: PARAMS.heatmapBlur,
+        heatmapMinOpacity: PARAMS.heatmapMinOpacity,
+        heatmapMaxZoom: PARAMS.heatmapMaxZoom,
+        heatmapGradient: PARAMS.heatmapGradient
+    };
+    
+    try {
+        localStorage.setItem('timelineVisualizerHeatmapSettings', JSON.stringify(heatmapSettings));
+        console.log('Heatmap settings saved to localStorage');
+    } catch (error) {
+        console.warn('Failed to save heatmap settings to localStorage:', error);
+    }
+}
+
+// Load heatmap settings from localStorage
+function loadHeatmapSettings() {
+    try {
+        const savedSettings = localStorage.getItem('timelineVisualizerHeatmapSettings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            
+            // Apply saved settings to PARAMS
+            PARAMS.heatmapRadius = settings.heatmapRadius || PARAMS.heatmapRadius;
+            PARAMS.heatmapBlur = settings.heatmapBlur || PARAMS.heatmapBlur;
+            PARAMS.heatmapMinOpacity = settings.heatmapMinOpacity || PARAMS.heatmapMinOpacity;
+            PARAMS.heatmapMaxZoom = settings.heatmapMaxZoom || PARAMS.heatmapMaxZoom;
+            PARAMS.heatmapGradient = settings.heatmapGradient || PARAMS.heatmapGradient;
+            
+            console.log('Heatmap settings loaded from localStorage:', settings);
+            return true;
+        }
+    } catch (error) {
+        console.warn('Failed to load heatmap settings from localStorage:', error);
+    }
+    return false;
+}
+
+// Save tile layer preference to localStorage
+function saveTileLayerPreference() {
+    try {
+        localStorage.setItem('timelineVisualizerTileLayer', PARAMS.tileLayer);
+        console.log('Tile layer preference saved to localStorage:', PARAMS.tileLayer);
+    } catch (error) {
+        console.warn('Failed to save tile layer preference to localStorage:', error);
+    }
+}
+
+// Load tile layer preference from localStorage
+function loadTileLayerPreference() {
+    try {
+        const savedTileLayer = localStorage.getItem('timelineVisualizerTileLayer');
+        if (savedTileLayer && TILE_LAYERS[savedTileLayer]) {
+            PARAMS.tileLayer = savedTileLayer;
+            console.log('Tile layer preference loaded from localStorage:', savedTileLayer);
+            return true;
+        }
+    } catch (error) {
+        console.warn('Failed to load tile layer preference from localStorage:', error);
+    }
+    return false;
+}
+
 // Initialize the map
 function initMap() {
+    // Load saved tile layer preference
+    loadTileLayerPreference();
+    
     map = L.map('map').setView([0, 0], 2); // Start with world view
     
-    // Initialize with default tile layer
+    // Initialize with preferred tile layer
     currentTileLayer = L.tileLayer(TILE_LAYERS[PARAMS.tileLayer].url, {
         attribution: TILE_LAYERS[PARAMS.tileLayer].attribution + ' | <a href="https://luciopaiva.com">luciopaiva.com</a> | This app is <a href="https://github.com/luciopaiva/android-timeline-history-visualizer" target="_blank">open source</a>',
         maxZoom: 18
@@ -276,6 +345,9 @@ function addTimelinePathsToMap(paths) {
 
 // Update heatmap settings
 function updateHeatmapSettings() {
+    // Save settings to localStorage
+    saveHeatmapSettings();
+    
     if (heatmapLayer && filteredData && filteredData.timelinePaths.length > 0) {
         // Remove current heatmap
         map.removeLayer(heatmapLayer);
@@ -382,7 +454,9 @@ function handleFileUpload(e) {
             if (timelineData.dateRange.start && timelineData.dateRange.end) {
                 PARAMS.dateFrom = timelineData.dateRange.start.toISOString().split('T')[0];
                 PARAMS.dateTo = timelineData.dateRange.end.toISOString().split('T')[0];
-                pane.refresh();
+                if (pane) {
+                    pane.refresh();
+                }
             }
             
             console.log('Timeline visualization completed successfully!');
@@ -491,6 +565,9 @@ function initTweakpane() {
         return;
     }
 
+    // Load saved heatmap settings before creating the pane
+    loadHeatmapSettings();
+
     pane = new Tweakpane.Pane({
         container: container,
         title: 'Timeline Controls',
@@ -521,6 +598,7 @@ function initTweakpane() {
         }, {})
     }).on('change', (ev) => {
         changeTileLayer(ev.value);
+        saveTileLayerPreference();
     });
 
     // Date filters
@@ -578,6 +656,26 @@ function initTweakpane() {
             return acc;
         }, {})
     }).on('change', updateHeatmapSettings);
+
+    // Reset button for heatmap settings
+    heatmapFolder.addButton({
+        title: '🔄 Reset to Defaults',
+    }).on('click', () => {
+        // Reset to default values
+        PARAMS.heatmapRadius = 10;
+        PARAMS.heatmapBlur = 5;
+        PARAMS.heatmapMinOpacity = 0.15;
+        PARAMS.heatmapMaxZoom = 18;
+        PARAMS.heatmapGradient = 'default';
+        
+        // Refresh the pane to show updated values
+        pane.refresh();
+        
+        // Update the heatmap and save settings
+        updateHeatmapSettings();
+        
+        console.log('Heatmap settings reset to defaults');
+    });
 
     console.log('Tweakpane initialized successfully');
 }
