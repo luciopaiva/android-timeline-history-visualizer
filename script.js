@@ -565,8 +565,9 @@ function initTweakpane() {
         return;
     }
 
-    // Load saved heatmap settings before creating the pane
+    // Load saved settings before creating the pane
     loadHeatmapSettings();
+    loadTileLayerPreference();
 
     pane = new Tweakpane.Pane({
         container: container,
