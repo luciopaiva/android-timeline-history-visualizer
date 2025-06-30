@@ -13,6 +13,12 @@ const PARAMS = {
     dateFrom: '',
     dateTo: '',
     tileLayer: 'OpenStreetMap',
+    // Heatmap settings
+    heatmapRadius: 10,
+    heatmapBlur: 5,
+    heatmapMinOpacity: 0.15,
+    heatmapMaxZoom: 18,
+    heatmapGradient: 'default',
     uploadFile: () => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -43,6 +49,40 @@ const TILE_LAYERS = {
     'Terrain': {
         url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
         attribution: '© OpenTopoMap (CC-BY-SA) © OpenStreetMap contributors'
+    }
+};
+
+// Heatmap gradient options
+const HEATMAP_GRADIENTS = {
+    'default': {
+        0.0: 'blue',
+        0.5: 'lime', 
+        1.0: 'red'
+    },
+    'fire': {
+        0.0: '#000080',
+        0.25: '#0000FF',
+        0.5: '#00FF00',
+        0.75: '#FFFF00',
+        1.0: '#FF0000'
+    },
+    'cool': {
+        0.0: '#00FFFF',
+        0.5: '#0080FF',
+        1.0: '#8000FF'
+    },
+    'rainbow': {
+        0.0: '#9400D3',
+        0.17: '#4B0082',
+        0.33: '#0000FF',
+        0.5: '#00FF00',
+        0.67: '#FFFF00',
+        0.83: '#FF7F00',
+        1.0: '#FF0000'
+    },
+    'grayscale': {
+        0.0: '#000000',
+        1.0: '#FFFFFF'
     }
 };
 
@@ -216,14 +256,34 @@ function addTimelinePathsToMap(paths) {
     // Convert timeline paths to heatmap data format
     const heatmapData = paths.map(point => [point.lat, point.lng, 1]); // [lat, lng, intensity]
 
-    // Create heatmap layer with fixed settings
-    heatmapLayer = L.heatLayer(heatmapData, {
-        radius: 10,
-        blur: 5,
-        minOpacity: 0.15,
-    }).addTo(map);
+    // Create heatmap layer with configurable settings
+    const heatmapOptions = {
+        radius: PARAMS.heatmapRadius,
+        blur: PARAMS.heatmapBlur,
+        minOpacity: PARAMS.heatmapMinOpacity,
+        maxZoom: PARAMS.heatmapMaxZoom,
+    };
+
+    // Add gradient if not default
+    if (PARAMS.heatmapGradient !== 'default') {
+        heatmapOptions.gradient = HEATMAP_GRADIENTS[PARAMS.heatmapGradient];
+    }
+
+    heatmapLayer = L.heatLayer(heatmapData, heatmapOptions).addTo(map);
 
     console.log(`Heatmap created with ${heatmapData.length} points`);
+}
+
+// Update heatmap settings
+function updateHeatmapSettings() {
+    if (heatmapLayer && filteredData && filteredData.timelinePaths.length > 0) {
+        // Remove current heatmap
+        map.removeLayer(heatmapLayer);
+        heatmapLayer = null;
+        
+        // Recreate heatmap with new settings
+        addTimelinePathsToMap(filteredData.timelinePaths);
+    }
 }
 
 // Update map with processed data
@@ -476,6 +536,48 @@ function initTweakpane() {
     dateFolder.addInput(PARAMS, 'dateTo', {
         label: 'To'
     }).on('change', applyDateFilter);
+
+    // Heatmap settings
+    const heatmapFolder = pane.addFolder({
+        title: 'Heatmap Settings',
+        expanded: true
+    });
+
+    heatmapFolder.addInput(PARAMS, 'heatmapRadius', {
+        label: 'Radius',
+        min: 1,
+        max: 50,
+        step: 1
+    }).on('change', updateHeatmapSettings);
+
+    heatmapFolder.addInput(PARAMS, 'heatmapBlur', {
+        label: 'Blur',
+        min: 0,
+        max: 30,
+        step: 1
+    }).on('change', updateHeatmapSettings);
+
+    heatmapFolder.addInput(PARAMS, 'heatmapMinOpacity', {
+        label: 'Min Opacity',
+        min: 0,
+        max: 1,
+        step: 0.01
+    }).on('change', updateHeatmapSettings);
+
+    heatmapFolder.addInput(PARAMS, 'heatmapMaxZoom', {
+        label: 'Max Zoom',
+        min: 1,
+        max: 22,
+        step: 1
+    }).on('change', updateHeatmapSettings);
+
+    heatmapFolder.addInput(PARAMS, 'heatmapGradient', {
+        label: 'Gradient',
+        options: Object.keys(HEATMAP_GRADIENTS).reduce((acc, key) => {
+            acc[key.charAt(0).toUpperCase() + key.slice(1)] = key;
+            return acc;
+        }, {})
+    }).on('change', updateHeatmapSettings);
 
     console.log('Tweakpane initialized successfully');
 }
